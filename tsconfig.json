@@ -1,0 +1,35 @@
+{
+  // Lệnh "tsc" sẽ dựa theo file này để biên dịch TypeScript.
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "es6",
+    "module": "commonjs",
+    "lib": ["ES2022"],                // Thư viện đặc tả ECMAScript 2022.
+
+    /* Modules */
+    "moduleResolution": "node",       // Tìm kiếm module theo kiểu Node.js.
+    "esModuleInterop": true,          // Cho phép import default từ CJS (import express from 'express').
+
+    /* Strict Type Checking */
+    "strict": true,                   // Bật chế độ strict (noImplicitAny, strictNullChecks, v.v.)
+    "forceConsistentCasingInFileNames": true, // Không cho phép sai khác hoa/thường trong import đường dẫn.
+
+    /* Emit & Output */
+    "outDir": "./dist",                 // Thư mục xuất file .js.
+    "rootDir": "./src",                 // Thư mục chứa file .ts gốc.
+    "skipLibCheck": true,             // Tăng tốc, bỏ qua kiểm tra .d.ts của lib.
+
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    },
+
+    /* Khuyến nghị khác (tuỳ chọn) */
+    // "noImplicitReturns": true,     // Cảnh báo nếu hàm không return hết các nhánh
+    // "noFallthroughCasesInSwitch": true, // Cảnh báo switch-case thiếu break
+  },
+
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}
