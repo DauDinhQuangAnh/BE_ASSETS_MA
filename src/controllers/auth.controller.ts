@@ -367,6 +367,32 @@ export const unregisterAssetsController = async (req: Request, res: Response): P
   }
 };
 
+export const unregisterAssetsController1 = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { emp_code } = req.params;
+    const { asset_ids } = req.body;
+
+    if (!Array.isArray(asset_ids) || asset_ids.length === 0) {
+      res.status(400).json({ message: 'Vui lòng chọn ít nhất một thiết bị' });
+      return;
+    }
+
+    // Chuyển đổi asset_ids từ string sang number nếu cần
+    const assetIds = asset_ids.map(id => typeof id === 'string' ? parseInt(id) : id);
+
+    // Kiểm tra nếu có id không hợp lệ
+    if (assetIds.some(id => isNaN(id))) {
+      res.status(400).json({ message: 'Danh sách thiết bị không hợp lệ' });
+      return;
+    }
+
+    const result = await unregisterAssets(emp_code, assetIds);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error in unregisterAssetsController:', error);
+    res.status(500).json({ message: error.message || 'Lỗi khi hủy đăng ký thiết bị' });
+  }
+};
 // Lấy thông tin người dùng theo id
 export const getUserInfoByIdController = async (req: Request, res: Response): Promise<void> => {
   try {

@@ -23,6 +23,7 @@ import {
   getUserInfoByIdController,
   getUserShareFilesController,
   unregisterAssetsController,
+  unregisterAssetsController1,
   getAvailableAssetsController3,
   getActiveEmployeesController,
 } from '../controllers/auth.controller';
@@ -68,6 +69,7 @@ router.get('/users/:emp_code/available-assets3', authenticateToken, isAdmin, get
 router.post('/users/:emp_code/assign-asset', authenticateToken, isAdmin, assignAssetController);
 router.post('/users/:emp_code/return-assets', authenticateToken, isAdmin, returnAssetsController);
 router.post('/users/:emp_code/unregister-assets', authenticateToken, isAdmin, unregisterAssetsController);
+router.post('/users/:emp_code/unregister-assets1', authenticateToken, isAdmin, unregisterAssetsController1);
 
 // Quản lý tài sản
 router.get('/departments', fetchDepartments);

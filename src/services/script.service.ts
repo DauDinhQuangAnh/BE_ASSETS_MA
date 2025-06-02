@@ -536,20 +536,15 @@ export const getDeleteUser = async () => {
         ah.handover_date,
         ah.history_status,
         a.status_id,
-        ast.status_name
-      FROM Assets_History ah
-      JOIN Employees e ON e.employee_id = ah.employee_id
-      JOIN Assets a ON a.asset_id = ah.asset_id
+        ast.status_name,
+        e.status_work
+      FROM Employees e
+      LEFT JOIN Assets_History ah ON e.employee_id = ah.employee_id
+      LEFT JOIN Assets a ON a.asset_id = ah.asset_id
       LEFT JOIN Departments d ON d.department_id = ah.department_id
       LEFT JOIN Business_Units bu ON bu.business_unit_id = d.business_unit_id
       LEFT JOIN Asset_Statuses ast ON a.status_id = ast.status_id
-      WHERE ah.history_status = 'Đang chờ xóa'
-        AND a.status_id = (
-          SELECT status_id 
-          FROM Asset_Statuses 
-          WHERE status_name = 'Chờ xóa'
-        )
-        AND ah.returned_date IS NULL
+      WHERE e.status_work = 'Resigned'
       ORDER BY e.emp_code, ah.handover_date DESC
     `;
 

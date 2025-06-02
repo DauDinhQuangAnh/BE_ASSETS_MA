@@ -1046,6 +1046,115 @@ export const unregisterAssets = async (empCode: string, assetIds: number[]) => {
 
     // Lấy danh sách thiết bị được chọn của nhân viên
     const assetsResult = await client.query(
+      `SELECT ah.history_id, ah.asset_id, a.asset_code, a.status_id, ast.status_name, 
+              ah.is_handover, ah.history_status, a.ip_address, a.old_ip_address
+       FROM Assets_History ah
+       JOIN Assets a ON ah.asset_id = a.asset_id
+       JOIN Asset_Statuses ast ON a.status_id = ast.status_id
+       WHERE ah.employee_id = $1 
+       AND (ah.history_status = 'Đã đăng ký' OR ah.history_status = 'Chờ bàn giao' OR ah.history_status = 'Cấp phát chờ xóa')
+       AND ah.returned_date IS NULL
+       AND ah.asset_id = ANY($2)`,
+      [employee_id, assetIds]
+    );
+
+    if (assetsResult.rows.length === 0) {
+      throw new Error(`Không tìm thấy thiết bị nào hợp lệ để hủy đăng ký cho nhân viên ${empCode}`);
+    }
+
+    if (assetsResult.rows.length !== assetIds.length) {
+      const foundIds = assetsResult.rows.map(row => row.asset_id);
+      const invalidIds = assetIds.filter(id => !foundIds.includes(id));
+      throw new Error(`Một số thiết bị không hợp lệ hoặc không thuộc về nhân viên: ${invalidIds.join(', ')}`);
+    }
+
+    // Lấy status_id của các trạng thái
+    const [newStatusResult, inUseStatusResult, deleteStatusResult] = await Promise.all([
+      client.query('SELECT status_id FROM Asset_Statuses WHERE status_name = $1', ['New']),
+      client.query('SELECT status_id FROM Asset_Statuses WHERE status_name = $1', ['Đang sử dụng']),
+      client.query('SELECT status_id FROM Asset_Statuses WHERE status_name = $1', ['Chờ xóa'])
+    ]);
+
+    if (newStatusResult.rows.length === 0) {
+      throw new Error('Không tìm thấy trạng thái "New"');
+    }
+
+    if (inUseStatusResult.rows.length === 0) {
+      throw new Error('Không tìm thấy trạng thái "Đang sử dụng"');
+    }
+
+    if (deleteStatusResult.rows.length === 0) {
+      throw new Error('Không tìm thấy trạng thái "Chờ xóa"');
+    }
+
+    const newStatusId = newStatusResult.rows[0].status_id;
+    const inUseStatusId = inUseStatusResult.rows[0].status_id;
+    const deleteStatusId = deleteStatusResult.rows[0].status_id;
+
+    // Cập nhật trạng thái cho từng thiết bị
+    for (const asset of assetsResult.rows) {
+      let newStatus;
+
+      if (asset.history_status === 'Cấp phát chờ xóa') {
+        newStatus = deleteStatusId;
+      } else {
+        newStatus = asset.is_handover ? newStatusId : inUseStatusId;
+      }
+
+      await client.query(
+        `UPDATE Assets 
+         SET status_id = $1,
+             ip_address = CASE
+               WHEN old_ip_address IS NOT NULL THEN old_ip_address
+               ELSE NULL
+             END
+         WHERE asset_id = $2`,
+        [newStatus, asset.asset_id]
+      );
+
+      // Cập nhật trạng thái lịch sử dựa trên history_id
+      await client.query(
+        `UPDATE Assets_History 
+         SET history_status = 'Đã hủy',
+             returned_date = CURRENT_DATE
+         WHERE history_id = $1`,
+        [asset.history_id]
+      );
+    }
+
+    await client.query('COMMIT');
+    return {
+      message: 'Đã hủy đăng ký thiết bị thành công',
+      updatedAssets: assetsResult.rows.map(row => row.asset_code)
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+
+export const unregisterAssets1 = async (empCode: string, assetIds: number[]) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Kiểm tra nhân viên tồn tại
+    const empResult = await client.query(
+      'SELECT employee_id FROM Employees WHERE emp_code = $1',
+      [empCode]
+    );
+
+    if (empResult.rows.length === 0) {
+      throw new Error(`Không tìm thấy nhân viên với mã ${empCode}`);
+    }
+
+    const employee_id = empResult.rows[0].employee_id;
+
+    // Lấy danh sách thiết bị được chọn của nhân viên
+    const assetsResult = await client.query(
       `SELECT ah.history_id, ah.asset_id, a.asset_code, a.status_id, ast.status_name, ah.is_handover, ah.history_status
        FROM Assets_History ah
        JOIN Assets a ON ah.asset_id = a.asset_id
@@ -1128,6 +1237,7 @@ export const unregisterAssets = async (empCode: string, assetIds: number[]) => {
     client.release();
   }
 };
+
 
 // Lấy danh sách nhân viên đang làm việc
 export const getActiveEmployees = async () => {
